@@ -128,38 +128,42 @@ object DouyinParser : Parser {
     }
 
     private fun findCover(node: Any?): String? {
-        fun walk(n: Any?): String? = when (n) {
-            is JSONObject -> {
-                val cover = n.optJSONObject("cover")
-                if (cover != null) {
-                    val urls = cover.optJSONArray("url_list")
-                    if (urls != null && urls.length() > 0) return urls.getString(0)
+        fun walk(n: Any?): String? {
+            return when (n) {
+                is JSONObject -> {
+                    val cover = n.optJSONObject("cover")
+                    if (cover != null) {
+                        val urls = cover.optJSONArray("url_list")
+                        if (urls != null && urls.length() > 0) return urls.getString(0)
+                    }
+                    for (key in n.keys()) walk(n.opt(key))?.let { return it }
+                    null
                 }
-                for (key in n.keys()) walk(n.opt(key))?.let { return it }
-                null
+                is JSONArray -> {
+                    for (i in 0 until n.length()) walk(n.opt(i))?.let { return it }
+                    null
+                }
+                else -> null
             }
-            is JSONArray -> {
-                for (i in 0 until n.length()) walk(n.opt(i))?.let { return it }
-                null
-            }
-            else -> null
         }
         return walk(node)
     }
 
     private fun findFirstString(node: Any?, key: String): String? {
-        fun walk(n: Any?): String? = when (n) {
-            is JSONObject -> {
-                val v = n.opt(key)
-                if (v is String && v.isNotBlank()) return v
-                for (k in n.keys()) walk(n.opt(k))?.let { return it }
-                null
+        fun walk(n: Any?): String? {
+            return when (n) {
+                is JSONObject -> {
+                    val v = n.opt(key)
+                    if (v is String && v.isNotBlank()) return v
+                    for (k in n.keys()) walk(n.opt(k))?.let { return it }
+                    null
+                }
+                is JSONArray -> {
+                    for (i in 0 until n.length()) walk(n.opt(i))?.let { return it }
+                    null
+                }
+                else -> null
             }
-            is JSONArray -> {
-                for (i in 0 until n.length()) walk(n.opt(i))?.let { return it }
-                null
-            }
-            else -> null
         }
         return walk(node)
     }
