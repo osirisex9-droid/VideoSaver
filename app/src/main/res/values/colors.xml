@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pageBg">#F6F7F9</color>
+    <color name="cardBg">#F2F3F5</color>
+    <color name="textPrimary">#1A1A1A</color>
+    <color name="textHint">#9A9EA6</color>
+    <color name="accent">#FF6D2E</color>
+    <color name="white">#FFFFFF</color>
+    <color name="ic_launcher_background">#1A1A1A</color>
+</resources>

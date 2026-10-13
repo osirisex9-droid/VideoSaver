@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">视频保存助手</string>
+    <string name="app_slogan">粘贴分享链接，保存无水印视频 · 仅供个人学习使用</string>
+    <string name="input_hint">粘贴分享口令或链接，例如：复制打开抖音，看看【xx】的作品… https://v.douyin.com/xxxx/</string>
+    <string name="paste">粘贴</string>
+    <string name="parse">解析视频</string>
+    <string name="copy_link">复制直链</string>
+    <string name="save">保存到相册</string>
+    <string name="cover_desc">视频封面</string>
+    <string name="compliance">素材仅供个人学习使用，请尊重原作者版权</string>
+</resources>
