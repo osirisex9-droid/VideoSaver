@@ -215,10 +215,83 @@ object GenericParser : Parser {
                 ?.groupValues?.get(1)
 }
 
-val PARSERS = listOf(DouyinParser, KuaishouParser, GenericParser)
+val PARSERS = listOf(BugpkApiParser, DouyinParser, KuaishouParser, GenericParser)
+
+/**
+ * 公开解析接口优先（服务器端持有有效 Cookie/签名，成功率最高）。
+ * bugpk.com 由开源项目 LiYiCha/short_videos 作者维护。
+ */
+object BugpkApiParser : Parser {
+    private const val BASE = "https://api.bugpk.com/api/"
+
+    private fun endpointFor(url: String): String? = when {
+        url.contains("douyin.com") || url.contains("iesdouyin.com") -> "douyin"
+        url.contains("kuaishou.com") || url.contains("chenzhongtech.com") -> "kuaishou"
+        else -> null
+    }
+
+    override fun match(url: String) = endpointFor(url) != null
+
+    override suspend fun parse(url: String): ParseResult = withContext(Dispatchers.IO) {
+        val api = BASE + endpointFor(url)
+        val body = Http.get("$api?url=${java.net.URLEncoder.encode(url, "UTF-8")}")
+        val root = JSONObject(body)
+        if (root.optInt("code") != 200) {
+            throw ParseException(root.optString("msg", "解析接口返回失败"))
+        }
+        val data = root.optJSONObject("data") ?: throw ParseException("解析接口无数据")
+
+        val images = mutableListOf<String>()
+        val imgs = data.optJSONArray("images")
+        if (imgs != null) {
+            for (i in 0 until imgs.length()) {
+                when (val item = imgs.opt(i)) {
+                    is String -> images.add(item)
+                    is JSONObject -> {
+                        val u = item.optString("url", "")
+                        when {
+                            u.isNotBlank() -> images.add(u)
+                            else -> {
+                                val list = item.optJSONArray("url_list")
+                                if (list != null && list.length() > 0) images.add(list.getString(0))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var videoUrl = data.optString("url", "")
+        if (videoUrl.isBlank()) {
+            val backups = data.optJSONArray("video_backup")
+            if (backups != null && backups.length() > 0) {
+                val first = backups.optJSONObject(0)
+                videoUrl = first?.optString("url", "") ?: ""
+            }
+        }
+        if (videoUrl.isBlank() && images.isEmpty()) {
+            throw ParseException("接口未返回可保存的内容")
+        }
+
+        ParseResult(
+            title = data.optString("title", ""),
+            author = data.optJSONObject("author")?.optString("name", "") ?: "",
+            cover = data.optString("cover", ""),
+            videoUrl = videoUrl,
+            images = images.distinct()
+        )
+    }
+}
 
 suspend fun parseShareText(text: String): ParseResult {
     val url = extractUrl(text) ?: throw ParseException("没有识别到链接，请粘贴完整的分享文本")
-    val parser = PARSERS.firstOrNull { it.match(url) } ?: GenericParser
-    return parser.parse(url)
+    var lastError: Exception? = null
+    for (parser in PARSERS.filter { it.match(url) }) {
+        try {
+            return parser.parse(url)
+        } catch (e: Exception) {
+            lastError = e
+        }
+    }
+    throw lastError ?: ParseException("解析失败")
 }
